@@ -1,8 +1,8 @@
-variable "region" {
-  description = "AWS Region"
-  default     = "ap-south-1"
+variable "region_1" {
+  description = "AWS Region 1 to deploy resources"
+  type        = string
+  default     = "ap-south-1" # Default to Mumbai region
 }
-
 
 variable "zone1" {
   description = "AWS Zone 1"
@@ -12,6 +12,22 @@ variable "zone1" {
 variable "zone2" {
   description = "AWS Zone 2"
   default     = "ap-south-1b"
+}
+
+variable "region_2" {
+  description = "AWS Region 2 to deploy resources"
+  type        = string
+  default     = "us-west-1"  # Default to Northern California
+}
+
+variable "zone1" {
+  description = "AWS Zone 1"
+  default     = "us-west-1a"
+}
+
+variable "zone2" {
+  description = "AWS Zone 2"
+  default     = "us-west-1b"
 }
 
 variable "vpc_cidr_block" {

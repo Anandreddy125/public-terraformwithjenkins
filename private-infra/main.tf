@@ -17,11 +17,19 @@ resource "local_file" "private_key" {
 }
 
 # VPC
-resource "aws_vpc" "k3s-vpc" {
+resource "aws_vpc" "k3s-vpc-1" {
+  provider = aws.region_1
   cidr_block = var.vpc_cidr_block
-  
   tags = {
-    Name = "k3s-vpc"
+    Name = "k3s-vpc-1"
+  }
+}
+
+resource "aws_vpc" "k3s-vpc-2" {
+  provider = aws.region_2
+  cidr_block = var.vpc_cidr_block
+  tags = {
+    Name = "k3s-vpc-2"
   }
 }
 

@@ -314,14 +314,35 @@ resource "aws_lb_listener" "listener_30007" {
   }
 }
 
-# Bastion Host
+# Data Sources for Region-Specific AMIs
+data "aws_ami" "latest_region_1_ami" {
+  provider = aws.region_1
+  most_recent = true
+  owners      = ["amazon"]
+  filters = {
+    name = "ubuntu/images/*ubuntu-xenial-16.04-amd64-server-*"
+  }
+}
+
+data "aws_ami" "latest_region_2_ami" {
+  provider = aws.region_2
+  most_recent = true
+  owners      = ["amazon"]
+  filters = {
+    name = "ubuntu/images/*ubuntu-focal-20.04-amd64-server-*"
+  }
+}
+
+# Define Resources for Region 1 (example: Bastion Host, K3s Master, etc.)
+
 resource "aws_instance" "bastion" {
-  ami                    = var.stand_ami_id
-  instance_type          = var.stand_instance_type
-  subnet_id              = aws_subnet.k3s-public.id
-  key_name               = aws_key_pair.example.key_name
-  vpc_security_group_ids = [aws_security_group.bastion_sg.id]
+  provider = aws.region_1
+  ami      = data.aws_ami.latest_region_1_ami.id
+  instance_type = var.stand_instance_type
+  subnet_id = aws_subnet.k3s-public.id
+  key_name = aws_key_pair.example.key_name
   associate_public_ip_address = true
+  vpc_security_group_ids = [aws_security_group.bastion_sg.id]
 
   tags = {
     Name = "Bastion Host"
@@ -338,12 +359,13 @@ resource "aws_instance" "bastion" {
       host        = self.public_ip
     }
   }
+
   provisioner "remote-exec" {
     inline = [
       "sudo apt-get update -y",
       "sudo apt-get install -y htop"  # Add any utilities needed for the bastion host
     ]
-   connection {
+    connection {
       type        = "ssh"
       user        = "ubuntu"
       private_key = tls_private_key.example.private_key_pem
@@ -352,20 +374,13 @@ resource "aws_instance" "bastion" {
   }
 }
 
-resource "aws_eip" "bastion_eip" {
-  instance = aws_instance.bastion.id
-  tags = {
-    Name = "bastion-eip"
-  }
-}
-
-# Private EC2 Instances
 resource "aws_instance" "k3s_master" {
-  ami                         = var.ami_id
-  instance_type               = var.instance_type
-  key_name                    = aws_key_pair.example.key_name
-  subnet_id                   = aws_subnet.k3s-private.id
-  vpc_security_group_ids      = [aws_security_group.private_sg.id]
+  provider = aws.region_1
+  ami      = data.aws_ami.latest_region_1_ami.id
+  instance_type = var.instance_type
+  key_name = aws_key_pair.example.key_name
+  subnet_id = aws_subnet.k3s-private.id
+  vpc_security_group_ids = [aws_security_group.private_sg.id]
 
   tags = {
     Name = "k3s-master"
@@ -375,31 +390,14 @@ resource "aws_instance" "k3s_master" {
     source      = "nginx-deploy.yml"
     destination = "/tmp/nginx-deploy.yml"
 
-   connection {
-      type        = "ssh"
-      user        = var.ssh_user
-      private_key = tls_private_key.example.private_key_pem
-      host        = self.private_ip  # Private IP of the k3s_master node
-      bastion_host        = aws_eip.bastion_eip.public_ip
-      #bastion_host = aws_instance.bastion.public_ip  # Use bastion for SSH
-      bastion_user = var.ssh_user  # SSH user for bastion host
-      bastion_private_key = tls_private_key.example.private_key_pem  # Key for bastion host
-    }
-  }
-
-  provisioner "file" {
-    source      = "nginx-service.yml"
-    destination = "/tmp/nginx-service.yml"
-
     connection {
       type        = "ssh"
       user        = var.ssh_user
       private_key = tls_private_key.example.private_key_pem
       host        = self.private_ip  # Private IP of the k3s_master node
-      bastion_host        = aws_eip.bastion_eip.public_ip
-    # bastion_host = aws_instance.bastion.public_ip  # Use bastion for SSH
-      bastion_user = var.ssh_user  # SSH user for bastion host
-      bastion_private_key = tls_private_key.example.private_key_pem  # Key for bastion host
+      bastion_host = aws_eip.bastion_eip.public_ip
+      bastion_user = var.ssh_user
+      bastion_private_key = tls_private_key.example.private_key_pem
     }
   }
 
@@ -408,10 +406,9 @@ resource "aws_instance" "k3s_master" {
       "sudo apt-get update -y",
       "sudo apt-get install snapd -y",
       "sudo snap install helm --classic",
-     # "git clone https://${data.vault_kv_secret_v2.example.data["Anandreddy125"]}@github.com/Anandreddy125/private-repo.git /tmp/anrs",
       "helm version || echo 'Helm installation failed'",
       "curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=${var.k3s_version} INSTALL_K3S_EXEC=\"server --disable=traefik\" sh -",
-      "sleep 30", # Wait for K3s to start
+      "sleep 30",  # Wait for K3s to start
       "sudo cat /var/lib/rancher/k3s/server/node-token > /tmp/node-token", # Save token to a file
     ]
 
@@ -420,24 +417,22 @@ resource "aws_instance" "k3s_master" {
       user        = var.ssh_user
       private_key = tls_private_key.example.private_key_pem
       host        = self.private_ip  # Private IP of the k3s_master node
-      bastion_host        = aws_eip.bastion_eip.public_ip
-      #bastion_host = aws_instance.bastion.public_ip  # Use bastion for SSH
-      bastion_user = var.ssh_user  # SSH user for bastion host
-      bastion_private_key = tls_private_key.example.private_key_pem  # Key for bastion host
+      bastion_host = aws_eip.bastion_eip.public_ip
+      bastion_user = var.ssh_user
+      bastion_private_key = tls_private_key.example.private_key_pem
     }
   }
 }
 
-# Private EC2 Instances
-# Update the reference from k3s_master to k3s_backend
 resource "aws_instance" "k3s_worker" {
-  count                       = var.instance_count
-  ami                         = var.ami_id
-  instance_type               = var.instance_type
-  key_name                    = aws_key_pair.example.key_name
+  count = var.instance_count
+  provider = aws.region_1
+  ami      = data.aws_ami.latest_region_1_ami.id
+  instance_type = var.instance_type
+  key_name = aws_key_pair.example.key_name
   associate_public_ip_address = false  # No public IP
-  subnet_id                   = aws_subnet.k3s-private.id # Place in private subnet
-  vpc_security_group_ids      = [aws_security_group.private_sg.id]
+  subnet_id = aws_subnet.k3s-private.id
+  vpc_security_group_ids = [aws_security_group.private_sg.id]
 
   tags = {
     Name = "k3s-worker-${count.index}"
@@ -448,48 +443,93 @@ resource "aws_instance" "k3s_worker" {
     destination = "/tmp/${var.key_name}.pem"
 
     connection {
-      type                 = "ssh"
-      user                 = var.ssh_user
-      private_key          = tls_private_key.example.private_key_pem
-      host                 = self.private_ip  # Private IP
-      bastion_host        = aws_eip.bastion_eip.public_ip
-      #bastion_host         = aws_instance.bastion.public_ip  # Bastion host for SSH
-      bastion_user         = var.ssh_user
-      bastion_private_key  = tls_private_key.example.private_key_pem
+      type        = "ssh"
+      user        = var.ssh_user
+      private_key = tls_private_key.example.private_key_pem
+      host        = self.private_ip
+      bastion_host = aws_eip.bastion_eip.public_ip
+      bastion_user = var.ssh_user
+      bastion_private_key = tls_private_key.example.private_key_pem
     }
   }
 
   provisioner "remote-exec" {
     inline = [
       "chmod 600 /tmp/terraform-key.pem",
-      # Corrected reference to k3s_backend
       "K3S_TOKEN=$(ssh -o StrictHostKeyChecking=no -i /tmp/${var.key_name}.pem ${var.ssh_user}@${aws_instance.k3s_master.private_ip} 'sudo cat /var/lib/rancher/k3s/server/node-token')",
       "K3S_URL=https://${aws_instance.k3s_master.private_ip}:6443",
       "curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=${var.k3s_version} K3S_URL=$K3S_URL K3S_TOKEN=$K3S_TOKEN sh -"
     ]
 
     connection {
-      type                 = "ssh"
-      user                 = var.ssh_user
-      private_key          = tls_private_key.example.private_key_pem
-      host                 = self.private_ip  # Private IP of worker node
-      bastion_host        = aws_eip.bastion_eip.public_ip
-    # bastion_host         = aws_instance.bastion.public_ip  # Bastion host
-      bastion_user         = var.ssh_user
-      bastion_private_key  = tls_private_key.example.private_key_pem
+      type        = "ssh"
+      user        = var.ssh_user
+      private_key = tls_private_key.example.private_key_pem
+      host        = self.private_ip
+      bastion_host = aws_eip.bastion_eip.public_ip
+      bastion_user = var.ssh_user
+      bastion_private_key = tls_private_key.example.private_key_pem
     }
   }
 }
 
+# Define Resources for Region 2 (same as for region_1)
+resource "aws_instance" "bastion_region_2" {
+  provider = aws.region_2
+  ami      = data.aws_ami.latest_region_2_ami.id
+  instance_type = var.stand_instance_type
+  subnet_id = aws_subnet.k3s-public.id
+  key_name = aws_key_pair.example.key_name
+  associate_public_ip_address = true
+  vpc_security_group_ids = [aws_security_group.bastion_sg.id]
 
+  tags = {
+    Name = "Bastion Host Region 2"
+  }
 
-resource "aws_lb_target_group_attachment" "master_attachment" {
+  # Repeat provisioners as per region_1
+}
+
+resource "aws_instance" "k3s_master_region_2" {
+  provider = aws.region_2
+  ami      = data.aws_ami.latest_region_2_ami.id
+  instance_type = var.instance_type
+  key_name = aws_key_pair.example.key_name
+  subnet_id = aws_subnet.k3s-private.id
+  vpc_security_group_ids = [aws_security_group.private_sg.id]
+
+  tags = {
+    Name = "k3s-master Region 2"
+  }
+
+  # Repeat provisioners as per region_1
+}
+
+resource "aws_instance" "k3s_worker_region_2" {
+  count = var.instance_count
+  provider = aws.region_2
+  ami      = data.aws_ami.latest_region_2_ami.id
+  instance_type = var.instance_type
+  key_name = aws_key_pair.example.key_name
+  associate_public_ip_address = false  # No public IP
+  subnet_id = aws_subnet.k3s-private.id
+  vpc_security_group_ids = [aws_security_group.private_sg.id]
+
+  tags = {
+    Name = "k3s-worker Region 2-${count.index}"
+  }
+
+  # Repeat provisioners as per region_1
+}
+
+# Example of Attachments for Load Balancers (same as region_1)
+resource "aws_lb_target_group_attachment" "master_attachment_region_1" {
   target_group_arn = aws_lb_target_group.tg_30007.arn
   target_id        = aws_instance.k3s_master.id
   port             = var.k3s_service_port
 }
 
-resource "aws_lb_target_group_attachment" "worker_attachments" {
+resource "aws_lb_target_group_attachment" "worker_attachments_region_1" {
   count            = var.instance_count
   target_group_arn = aws_lb_target_group.tg_30007.arn
   target_id        = aws_instance.k3s_worker[count.index].id

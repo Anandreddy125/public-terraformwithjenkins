@@ -8,5 +8,11 @@ terraform {
 }
 
 provider "aws" {
-    region     = "${var.region}"
+  region = var.region_1
+  alias  = "region_1"
+}
+
+provider "aws" {
+  region = var.region_2
+  alias  = "region_2"
 }

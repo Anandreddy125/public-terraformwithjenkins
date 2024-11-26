@@ -28,14 +28,6 @@ resource "aws_vpc" "k3s-vpc-1" {
   }
 }
 
-resource "aws_vpc" "k3s-vpc-2" {
-  provider = aws.region_2
-  cidr_block = var.vpc_cidr_block
-  tags = {
-    Name = "k3s-vpc-2"
-  }
-}
-
 # Internet Gateway
 resource "aws_internet_gateway" "k3s-igw" {
   provider = aws.region_1
@@ -334,36 +326,28 @@ resource "aws_lb_listener" "listener_30007" {
 }
 
 # Generate a private key for SSH access
-resource "tls_private_key" "example" {
+resource "tls_private_key" "example1" {
   provider = aws.region_2
   algorithm = "RSA"
   rsa_bits  = 2048
 }
 
 # Create an AWS key pair using the generated public key
-resource "aws_key_pair" "example" {
+resource "aws_key_pair" "example1" {
   provider = aws.region_2
   key_name   = var.key_name
   public_key = tls_private_key.example.public_key_openssh
 }
 
 # Save the private key to a local file
-resource "local_file" "private_key" {
+resource "local_file" "private_key1" {
   provider = aws.region_2
   content  = tls_private_key.example.private_key_pem
   filename = "${path.module}/${var.key_name}.pem"
 }
 
-# VPC
-resource "aws_vpc" "k3s-vpc-1" {
-  provider = aws.region_2
-  cidr_block = var.vpc_cidr_block
-  tags = {
-    Name = "k3s-vpc-1"
-  }
-}
 
-resource "aws_vpc" "k3s-vpc-2" {
+resource "aws_vpc" "k3s-vpc-21" {
   provider = aws.region_2
   cidr_block = var.vpc_cidr_block
   tags = {
@@ -372,7 +356,7 @@ resource "aws_vpc" "k3s-vpc-2" {
 }
 
 # Internet Gateway
-resource "aws_internet_gateway" "k3s-igw" {
+resource "aws_internet_gateway" "k3s-igw1" {
   provider = aws.region_2
   vpc_id = aws_vpc.k3s-vpc.id
 
@@ -382,15 +366,16 @@ resource "aws_internet_gateway" "k3s-igw" {
 }
 
 # Create EIP for NAT Gateway
+
+resource "aws_eip" "net-eip1" {
 provider = aws.region_2
-resource "aws_eip" "net-eip" {
   tags = {
     Name = "nat-eip"
   }
 }
 
 # NAT Gateway
-resource "aws_nat_gateway" "k3s-nat" {
+resource "aws_nat_gateway" "k3s-nat1" {
   provider = aws.region_2
   allocation_id = aws_eip.net-eip.id
   subnet_id     = aws_subnet.k3s-public.id
@@ -401,7 +386,7 @@ resource "aws_nat_gateway" "k3s-nat" {
 }
 
 # Create EIP for NAT Gateway
-resource "aws_eip" "net-eip1" {
+resource "aws_eip" "net-eip11" {
   provider = aws.region_2
   tags = {
     Name = "nat-eip1"
@@ -409,7 +394,7 @@ resource "aws_eip" "net-eip1" {
 }
 
 # NAT Gateway
-resource "aws_nat_gateway" "k3s-nat1" {
+resource "aws_nat_gateway" "k3s-nat11" {
   provider = aws.region_2
   allocation_id = aws_eip.net-eip1.id
   subnet_id     = aws_subnet.k3s-public.id
@@ -420,7 +405,7 @@ resource "aws_nat_gateway" "k3s-nat1" {
 }
 
 # Public Subnet for Bastion Host
-resource "aws_subnet" "k3s-public" {
+resource "aws_subnet" "k3s-public1" {
   provider = aws.region_2
   vpc_id            = aws_vpc.k3s-vpc.id
   cidr_block        = var.public_subnet_a_cidr_block
@@ -432,7 +417,7 @@ resource "aws_subnet" "k3s-public" {
 }
 
 # Private Subnet for Private EC2 Instance
-resource "aws_subnet" "k3s-private" {
+resource "aws_subnet" "k3s-private1" {
   provider = aws.region_2
   vpc_id            = aws_vpc.k3s-vpc.id
   cidr_block        = var.private_subnet_b_cidr_block
@@ -444,7 +429,7 @@ resource "aws_subnet" "k3s-private" {
 }
 
 # Public Route Table
-resource "aws_route_table" "k3s-rt-public" {
+resource "aws_route_table" "k3s-rt-public1" {
   provider = aws.region_2
   vpc_id = aws_vpc.k3s-vpc.id
 
@@ -465,7 +450,7 @@ resource "aws_route_table" "k3s-rt-public" {
 }
 
 # Private Route Table (using NAT Gateway)
-resource "aws_route_table" "k3s-rt-private" {
+resource "aws_route_table" "k3s-rt-private1" {
   provider = aws.region_1
   vpc_id = aws_vpc.k3s-vpc.id
 
@@ -480,20 +465,20 @@ resource "aws_route_table" "k3s-rt-private" {
 }
 
 # Associate Route Tables with Subnets
-resource "aws_route_table_association" "a" {
+resource "aws_route_table_association" "a1" {
   provider = aws.region_2
   subnet_id      = aws_subnet.k3s-public.id
   route_table_id = aws_route_table.k3s-rt-public.id
 }
 
-resource "aws_route_table_association" "b" {
+resource "aws_route_table_association" "b1" {
   provider = aws.region_2
   subnet_id      = aws_subnet.k3s-private.id
   route_table_id = aws_route_table.k3s-rt-private.id
 }
 
 # Security Group for Bastion Host
-resource "aws_security_group" "bastion_sg" {
+resource "aws_security_group" "bastion_sg1" {
   provider = aws.region_2
   name        = "bastion-sg"
   description = "Allow SSH access to the bastion host"
@@ -550,7 +535,7 @@ ingress {
   }
 }
 
-resource "aws_security_group" "private_sg" {
+resource "aws_security_group" "private_sg1" {
   provider = aws.region_2
   name        = "private-sg"
   description = "Allow SSH access from bastion"
@@ -616,7 +601,7 @@ tags = {
 }
 
 
-resource "aws_lb" "my_nlb" {
+resource "aws_lb" "my_nlb1" {
   provider = aws.region_2
   name                    = var.lb_name
   internal                = false
@@ -639,7 +624,7 @@ resource "aws_lb" "my_nlb" {
   }
 }
 
-resource "aws_lb_target_group" "tg_30007" {
+resource "aws_lb_target_group" "tg1_30007" {
   provider = aws.region_2
   name     = var.target_group_name
   port     = var.k3s_service_port
@@ -656,7 +641,7 @@ resource "aws_lb_target_group" "tg_30007" {
   }
 }
 
-resource "aws_lb_listener" "listener_30007" {
+resource "aws_lb_listener" "listener1_30007" {
  provider = aws.region_2
   load_balancer_arn = aws_lb.my_nlb.arn
   port              = var.k3s_service_port

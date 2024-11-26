@@ -367,7 +367,7 @@ resource "aws_internet_gateway" "k3s-igw1" {
 
 # Create EIP for NAT Gateway
 
-resource "aws_eip" "net-eip1" {
+resource "aws_eip" "net-eip5" {
 provider = aws.region_2
   tags = {
     Name = "nat-eip"
@@ -375,7 +375,7 @@ provider = aws.region_2
 }
 
 # NAT Gateway
-resource "aws_nat_gateway" "k3s-nat1" {
+resource "aws_nat_gateway" "k3s-nat6" {
   provider = aws.region_2
   allocation_id = aws_eip.net-eip.id
   subnet_id     = aws_subnet.k3s-public.id
@@ -593,7 +593,7 @@ resource "aws_security_group" "private_sg1" {
   }
 }
 
-resource "aws_eip" "nlb_eip" {
+resource "aws_eip" "nlb_eip7" {
   count = 1
 tags = {
     Name = "nlb-eip"
@@ -854,7 +854,7 @@ resource "aws_instance" "k3s_worker" {
 }
 
 # Define Resources for Region 2 (same as for region_1)
-resource "aws_instance" "bastion_region_2" {
+resource "aws_instance" "bastion_region_4" {
   provider = aws.region_2
   ami      = data.aws_ami.latest_region_2_ami.id
   instance_type = var.stand_instance_type

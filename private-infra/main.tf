@@ -333,8 +333,6 @@ resource "aws_lb_listener" "listener_30007" {
   }
 }
 
-----------regions_02---------
-
 # Generate a private key for SSH access
 resource "tls_private_key" "example" {
   provider = aws.region_2

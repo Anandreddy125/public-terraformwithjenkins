@@ -16,3 +16,4 @@ provider "aws" {
   region = var.region_2
   alias  = "region_2"
 }
+

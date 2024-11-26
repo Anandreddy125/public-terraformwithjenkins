@@ -47,8 +47,8 @@ resource "aws_internet_gateway" "k3s-igw" {
 }
 
 # Create EIP for NAT Gateway
-provider = aws.region_1
 resource "aws_eip" "net-eip" {
+provider = aws.region_1
   tags = {
     Name = "nat-eip"
   }

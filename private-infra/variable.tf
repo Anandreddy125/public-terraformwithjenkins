@@ -1,3 +1,15 @@
+variable "region_1" {
+  description = "The first AWS region"
+  type        = string
+  default     = "us-west-2"  # You can set a default or leave it to be provided later
+}
+
+variable "region_2" {
+  description = "The second AWS region"
+  type        = string
+  default     = "us-east-1"  # You can set a default or leave it to be provided later
+}
+
 # AWS Provider Configuration Variables
 variable "vpc_cidr_block" {
   description = "VPC network"

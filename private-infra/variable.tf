@@ -45,19 +45,6 @@ variable "private_subnet_b_cidr_block" {
   default     = "10.0.2.0/24"
 }
 
-variable "stand_ami_id" {
-  description = "AMI ID for the bastion host"
-  type        = string
-  default     = "ami-0c2af51e265bd5e0e" 
-}
-
-variable "stand_instance_type" {
-  description = "The instance type for the stand instance"
-  type        = string
-  default     = "t2.micro"  # You can set a default value if desired
-}
-
-
 variable "lb_name" {
   description = "Load Balancer Name"
   type        = string
@@ -112,18 +99,6 @@ variable "unhealthy_threshold" {
   default     = 2
 }
 
-variable "ami_id" {
-  description = "AMI ID to use for the EC2 instances"
-  type        = string
-  default     = "ami-0c2af51e265bd5e0e"  # Ensure this AMI ID exists in your region
-}
-
-variable "instance_type" {
-  description = "Instance type for the EC2 instances"
-  type        = string
-  default     = "t2.medium"
-}
-
 variable "key_name" {
   description = "Key pair name for the EC2 instances"
   type        = string
@@ -158,4 +133,68 @@ variable "sg_name" {
   description = "The name of the security group"
   type        = string
   default     = "private-sg"  # Optional default value
+}
+
+variable "stand_instance_type" {
+  description = "The instance type for the bastion host"
+  type        = string
+  default     = "t2.micro"
+}
+
+variable "instance_type" {
+  description = "The instance type for the k3s nodes"
+  type        = string
+  default     = "t2.micro"
+}
+
+variable "instance_count" {
+  description = "The number of k3s worker nodes to create"
+  type        = number
+  default     = 3
+}
+
+variable "ssh_user" {
+  description = "SSH user for the instances"
+  type        = string
+  default     = "ubuntu"
+}
+
+variable "k3s_version" {
+  description = "The version of K3s to install"
+  type        = string
+  default     = "v1.21.6+k3s1"
+}
+
+variable "region_1_ami_id" {
+  description = "AMI ID for region 1"
+  type        = string
+}
+
+variable "region_2_ami_id" {
+  description = "AMI ID for region 2"
+  type        = string
+}
+
+variable "region_1_ami_filter_name" {
+  description = "AMI filter name pattern for region 1"
+  type        = string
+  default     = "ubuntu/images/*ubuntu-xenial-16.04-amd64-server-*"
+}
+
+variable "region_2_ami_filter_name" {
+  description = "AMI filter name pattern for region 2"
+  type        = string
+  default     = "ubuntu/images/*ubuntu-focal-20.04-amd64-server-*"
+}
+
+variable "region_1_ami_owner" {
+  description = "AMI owner for region 1"
+  type        = string
+  default     = "amazon"
+}
+
+variable "region_2_ami_owner" {
+  description = "AMI owner for region 2"
+  type        = string
+  default     = "amazon"
 }

@@ -671,29 +671,29 @@ resource "aws_lb_listener" "listener_30007" {
 }
 
 ------------
-# Data Sources for Region-Specific AMIs
+# Data source to get the latest AMI for Region 1
 data "aws_ami" "latest_region_1_ami" {
-  
   provider = aws.region_1
   most_recent = true
-  owners      = ["amazon"]
+  owners      = [var.region_1_ami_owner]
   filters = {
-    name = "ubuntu/images/*ubuntu-xenial-16.04-amd64-server-*"
+    name = var.region_1_ami_filter_name
   }
 }
 
+# Data source to get the latest AMI for Region 2
 data "aws_ami" "latest_region_2_ami" {
   provider = aws.region_2
   most_recent = true
-  owners      = ["amazon"]
+  owners      = [var.region_2_ami_owner]
   filters = {
-    name = "ubuntu/images/*ubuntu-focal-20.04-amd64-server-*"
+    name = var.region_2_ami_filter_name
   }
 }
 
 # Define Resources for Region 1 (example: Bastion Host, K3s Master, etc.)
 
-resource "aws_instance" "bastion" {
+resource "aws_instance" "bastion_region_1" {
   provider = aws.region_1
   ami      = data.aws_ami.latest_region_1_ami.id
   instance_type = var.stand_instance_type
@@ -703,7 +703,7 @@ resource "aws_instance" "bastion" {
   vpc_security_group_ids = [aws_security_group.bastion_sg.id]
 
   tags = {
-    Name = "Bastion Host"
+    Name = "Bastion Host Region 1"
   }
 
   provisioner "file" {
@@ -721,7 +721,47 @@ resource "aws_instance" "bastion" {
   provisioner "remote-exec" {
     inline = [
       "sudo apt-get update -y",
-      "sudo apt-get install -y htop"  # Add any utilities needed for the bastion host
+      "sudo apt-get install -y htop"
+    ]
+    connection {
+      type        = "ssh"
+      user        = "ubuntu"
+      private_key = tls_private_key.example.private_key_pem
+      host        = self.public_ip
+    }
+  }
+}
+
+# Region 2: Bastion Host
+resource "aws_instance" "bastion_region_2" {
+  provider = aws.region_2
+  ami      = data.aws_ami.latest_region_2_ami.id
+  instance_type = var.stand_instance_type
+  subnet_id = aws_subnet.k3s-public.id
+  key_name = aws_key_pair.example.key_name
+  associate_public_ip_address = true
+  vpc_security_group_ids = [aws_security_group.bastion_sg.id]
+
+  tags = {
+    Name = "Bastion Host Region 2"
+  }
+
+  provisioner "file" {
+    source      = "${path.module}/${var.key_name}.pem"
+    destination = "/tmp/terraform-key.pem"
+
+    connection {
+      type        = "ssh"
+      user        = "ubuntu"
+      private_key = tls_private_key.example.private_key_pem
+      host        = self.public_ip
+    }
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "sudo apt-get update -y",
+      "sudo apt-get install -y htop"
     ]
     connection {
       type        = "ssh"

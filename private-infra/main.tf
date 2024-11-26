@@ -1,3 +1,16 @@
+provider "aws" {
+  region = "ap-south-1"
+  alias  = "region_1"
+}
+
+provider "tls" {
+  # Add any required tls provider configuration here (if needed)
+}
+
+provider "local" {
+  # Add any required local provider configuration here (if needed)
+}
+
 # Generate a private key for SSH access
 resource "tls_private_key" "example" {
   provider = aws.region_1
@@ -14,17 +27,17 @@ resource "aws_key_pair" "example" {
 
 # Save the private key to a local file
 resource "local_file" "private_key" {
-  provider = aws.region_1
+  provider = local
   content  = tls_private_key.example.private_key_pem
   filename = "${path.module}/${var.key_name}.pem"
 }
 
 # VPC
-resource "aws_vpc" "k3s-vpc-1" {
+resource "aws_vpc" "k3s-vpc" {
   provider = aws.region_1
   cidr_block = var.vpc_cidr_block
   tags = {
-    Name = "k3s-vpc-1"
+    Name = "k3s-vpc"
   }
 }
 
@@ -35,44 +48,6 @@ resource "aws_internet_gateway" "k3s-igw" {
 
   tags = {
     Name = "k3s-igw"
-  }
-}
-
-# Create EIP for NAT Gateway
-resource "aws_eip" "net-eip" {
-provider = aws.region_1
-  tags = {
-    Name = "nat-eip"
-  }
-}
-
-# NAT Gateway
-resource "aws_nat_gateway" "k3s-nat" {
-  provider = aws.region_1
-  allocation_id = aws_eip.net-eip.id
-  subnet_id     = aws_subnet.k3s-public.id
-
-  tags = {
-    Name = "k3s-nat"
-  }
-}
-
-# Create EIP for NAT Gateway
-resource "aws_eip" "net-eip1" {
-  provider = aws.region_1
-  tags = {
-    Name = "nat-eip1"
-  }
-}
-
-# NAT Gateway
-resource "aws_nat_gateway" "k3s-nat1" {
-  provider = aws.region_1
-  allocation_id = aws_eip.net-eip1.id
-  subnet_id     = aws_subnet.k3s-public.id
-
-  tags = {
-    Name = "k3s-nat"
   }
 }
 
@@ -100,55 +75,6 @@ resource "aws_subnet" "k3s-private" {
   }
 }
 
-# Public Route Table
-resource "aws_route_table" "k3s-rt-public" {
-  provider = aws.region_1
-  vpc_id = aws_vpc.k3s-vpc.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.k3s-igw.id
-  }
-
-     route {
-    cidr_block     = "0.0.0.0/16"
-    nat_gateway_id = aws_nat_gateway.k3s-nat1.id
-  }
-  
-
-  tags = {
-    Name = "pub-route-table"
-  }
-}
-
-# Private Route Table (using NAT Gateway)
-resource "aws_route_table" "k3s-rt-private" {
-  provider = aws.region_1
-  vpc_id = aws_vpc.k3s-vpc.id
-
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.k3s-nat.id
-  }
-
-  tags = {
-    Name = "pvt-route-table"
-  }
-}
-
-# Associate Route Tables with Subnets
-resource "aws_route_table_association" "a" {
-  provider = aws.region_1
-  subnet_id      = aws_subnet.k3s-public.id
-  route_table_id = aws_route_table.k3s-rt-public.id
-}
-
-resource "aws_route_table_association" "b" {
-  provider = aws.region_1
-  subnet_id      = aws_subnet.k3s-private.id
-  route_table_id = aws_route_table.k3s-rt-private.id
-}
-
 # Security Group for Bastion Host
 resource "aws_security_group" "bastion_sg" {
   provider = aws.region_1
@@ -156,8 +82,8 @@ resource "aws_security_group" "bastion_sg" {
   description = "Allow SSH access to the bastion host"
   vpc_id      = aws_vpc.k3s-vpc.id
 
-ingress {
-    description = "HTTP PORT"
+  ingress {
+    description = "HTTP"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -180,32 +106,18 @@ ingress {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  ingress {
-    description = "Load Balancer to K3s"
-    from_port   = var.k3s_service_port
-    to_port     = var.k3s_service_port
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "K3s API server"
-    from_port   = var.k3s_api_port
-    to_port     = var.k3s_api_port
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
   tags = {
     Name = "bastion-sg"
   }
 }
+-----------
 
 resource "aws_security_group" "private_sg" {
   provider = aws.region_1

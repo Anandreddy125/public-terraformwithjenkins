@@ -668,7 +668,6 @@ resource "aws_lb_listener" "listener_30007" {
   }
 }
 
-------------
 # Data source to get the latest AMI for Region 1
 data "aws_ami" "latest_region_1_ami" {
   provider = aws.region_1

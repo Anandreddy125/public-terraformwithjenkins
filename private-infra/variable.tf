@@ -1,12 +1,4 @@
-provider "aws" {
-  region = "ap-south-1"
-}
-
-provider "aws" {
-  alias  = "region_2"
-  region = "us-west-2"
-}
-
+# AWS Provider Configuration Variables
 variable "vpc_cidr_block" {
   description = "VPC network"
   default     = "10.0.0.0/16"
@@ -18,7 +10,7 @@ variable "public_subnet_a_cidr_block" {
 }
 
 variable "private_subnet_b_cidr_block" {
-  description = "Public Subnet B"
+  description = "Private Subnet B"
   default     = "10.0.2.0/24"
 }
 
@@ -83,9 +75,9 @@ variable "key_name" {
 }
 
 variable "instance_count" {
-  description = "number of  ec2 instance to create"
-  type = number
-  default = 1
+  description = "Number of EC2 instances to create"
+  type        = number
+  default     = 3
 }
 
 variable "ssh_user" {
@@ -103,13 +95,13 @@ variable "k3s_version" {
 variable "bucket_name" {
   description = "The name of the S3 bucket"
   type        = string
-  default     = "anrs-xyz" 
+  default     = "anrs-xyz"
 }
 
 variable "sg_name" {
   description = "The name of the security group"
   type        = string
-  default     = "private-sg"  # Optional default value
+  default     = "private-sg"
 }
 
 variable "stand_instance_type" {
@@ -124,24 +116,7 @@ variable "instance_type" {
   default     = "t2.micro"
 }
 
-variable "instance_count" {
-  description = "The number of k3s worker nodes to create"
-  type        = number
-  default     = 3
-}
-
-variable "ssh_user" {
-  description = "SSH user for the instances"
-  type        = string
-  default     = "ubuntu"
-}
-
-variable "k3s_version" {
-  description = "The version of K3s to install"
-  type        = string
-  default     = "v1.21.6+k3s1"
-}
-
+# Region-specific AMI variables
 variable "region_1_ami_id" {
   description = "AMI ID for region 1"
   type        = string
@@ -175,3 +150,4 @@ variable "region_2_ami_owner" {
   type        = string
   default     = "amazon"
 }
+
